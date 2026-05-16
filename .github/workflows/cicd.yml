@@ -1,4 +1,4 @@
-name: React App Deployment 
+name: React App Deployment
 
 on:
   push:
@@ -11,7 +11,7 @@ jobs:
 
     steps:
 
-      # Checkout source code
+      # Checkout code
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -19,30 +19,50 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
 
       # Install dependencies
       - name: Install Dependencies
         run: npm install
 
-      # Build React Application
+      # Build Next.js App
       - name: Build Project
         run: npm run build
 
-      # Copy files to EC2
-      - name: Deploy to EC2
+      # Create tar file
+      - name: Create Artifact
+        run: |
+          tar -czf app.tar.gz .next public package.json next.config.js
+
+      # Copy tar file to EC2
+      - name: Copy Files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-           sudo mkdir -p /var/www/react-app
-           sudo chown -R ec2-user:ec2-user /var/www/react-app
-          source: ".next/*"
-          target: "/var/www/react-app"
+          source: "app.tar.gz"
+          target: "/tmp"
 
-      # Restart application/service
+      # SSH into EC2 and deploy
+      - name: Deploy Application
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo mkdir -p /var/www/react-app
+
+            sudo chown -R ec2-user:ec2-user /var/www/react-app
+
+            cd /var/www/react-app
+
+            rm -rf .next public package.json next.config.js
+
+            tar -xzf /tmp/app.tar.gz -C /var/www/react-app
+
+      # Restart app/service
       - name: Restart Nginx
         uses: appleboy/ssh-action@v1.0.3
         with:

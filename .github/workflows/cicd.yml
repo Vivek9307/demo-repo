@@ -25,7 +25,7 @@ jobs:
 
             # Clone repo if not exists
             if [ ! -d "react-app" ]; then
-              git clone https://github.com/YOUR_GITHUB_USERNAME/YOUR_REPOSITORY_NAME.git react-app
+              git clone https://github.com/Vivek9307/demo-repo.git
             fi
 
             # Go to project directory

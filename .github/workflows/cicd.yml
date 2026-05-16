@@ -12,7 +12,7 @@ jobs:
 
     steps:
 
-      # Checkout code
+      # Checkout source code
       - name: Checkout Code
         uses: actions/checkout@v4
 
@@ -26,14 +26,17 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      # Build Next.js app
+      # Build Next.js application
       - name: Build Application
         run: npm run build
 
-      # Create deployment package
+      # Create tar package
       - name: Create Artifact Package
         run: |
-          tar -czf app.tar.gz ./
+          tar -czf app.tar.gz \
+            .next \
+            package.json \
+            next.config.js
 
       # Upload artifact
       - name: Upload Build Artifact
@@ -54,7 +57,7 @@ jobs:
         with:
           name: nextjs-build
 
-      # Copy artifact to EC2
+      # Copy tar file to EC2
       - name: Copy Artifact to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -64,7 +67,7 @@ jobs:
           source: "app.tar.gz"
           target: "/tmp"
 
-      # Deploy on EC2
+      # Deploy application
       - name: Deploy Application
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -73,21 +76,23 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
 
-            # Create application directory
+            # Create app directory
             sudo mkdir -p /var/www/react-app
 
-            # Give permission to ec2-user
+            # Give permissions
             sudo chown -R ec2-user:ec2-user /var/www/react-app
 
-            # Go to application directory
-            cd /var/www/react-app
-
-          
+            # Remove old deployment
+            rm -rf /var/www/react-app/.next
+            rm -rf /var/www/react-app/public
 
             # Extract new build
             tar -xzf /tmp/app.tar.gz -C /var/www/react-app
 
-      
+            # Go to app directory
+            cd /var/www/react-app
+
+        
 
       # Restart nginx
       - name: Restart Nginx

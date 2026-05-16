@@ -1,4 +1,4 @@
-name: React App Deployment
+name: Next.js EC2 Deployment
 
 on:
   push:
@@ -6,7 +6,8 @@ on:
       - main
 
 jobs:
-  deploy:
+
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,17 +26,36 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      # Build Next.js App
-      - name: Build Project
+      # Build Next.js app
+      - name: Build Application
         run: npm run build
 
-      # Create tar file
-      - name: Create Artifact
+      # Create deployment package
+      - name: Create Artifact Package
         run: |
-          tar -czf app.tar.gz .next public package.json next.config.js
+          tar -czf app.tar.gz ./
 
-      # Copy tar file to EC2
-      - name: Copy Files to EC2
+      # Upload artifact
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: app.tar.gz
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Download artifact
+      - name: Download Build Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+
+      # Copy artifact to EC2
+      - name: Copy Artifact to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -44,7 +64,7 @@ jobs:
           source: "app.tar.gz"
           target: "/tmp"
 
-      # SSH into EC2 and deploy
+      # Deploy on EC2
       - name: Deploy Application
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -52,17 +72,24 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+
+            # Create application directory
             sudo mkdir -p /var/www/react-app
 
+            # Give permission to ec2-user
             sudo chown -R ec2-user:ec2-user /var/www/react-app
 
+            # Go to application directory
             cd /var/www/react-app
 
-            rm -rf .next public package.json next.config.js
+          
 
+            # Extract new build
             tar -xzf /tmp/app.tar.gz -C /var/www/react-app
 
-      # Restart app/service
+      
+
+      # Restart nginx
       - name: Restart Nginx
         uses: appleboy/ssh-action@v1.0.3
         with:

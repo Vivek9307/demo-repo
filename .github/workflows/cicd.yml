@@ -22,17 +22,16 @@ jobs:
 
             # Go to home directory
             cd /home/ec2-user
+            rm -rf demo-repo/
 
-            # Clone repo if not exists
-            if [ ! -d "react-app" ]; then
-              git clone https://github.com/Vivek9307/demo-repo.git
-            fi
+           
+            git clone https://github.com/Vivek9307/demo-repo.git
+            
 
             # Go to project directory
-            cd react-app
+            cd demo-repo/
 
-            # Pull latest code
-            git pull origin main
+          
 
             # Install Node.js dependencies
             npm install
